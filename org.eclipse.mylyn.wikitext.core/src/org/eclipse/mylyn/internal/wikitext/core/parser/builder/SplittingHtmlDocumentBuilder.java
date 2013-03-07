@@ -379,7 +379,8 @@ public class SplittingHtmlDocumentBuilder extends DocumentBuilder {
 	private String adjustHref(String href) {
 		if (href != null && href.startsWith("#")) { //$NON-NLS-1$
 			SplitOutlineItem target = outline.getOutlineItemById(href.substring(1));
-			if (target != null && target.getSplitTarget() != null) {
+			if (target != null && target.getSplitTarget() != null
+					&& !currentFile.getName().equals(target.getSplitTarget())) {
 				href = target.getSplitTarget().replace(" ", "%20") + href; //$NON-NLS-1$ //$NON-NLS-2$
 			}
 		}
