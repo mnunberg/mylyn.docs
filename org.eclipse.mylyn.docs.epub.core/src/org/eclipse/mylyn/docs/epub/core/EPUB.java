@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2011,2012 Torkild U. Resheim.
- * 
+ * Copyright (c) 2011-2014 Torkild U. Resheim.
+ *
  * All rights reserved. This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License v1.0 which
  * accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
- * 
- * Contributors: 
+ *
+ * Contributors:
  *   Torkild U. Resheim - initial API and implementation
  *******************************************************************************/
 package org.eclipse.mylyn.docs.epub.core;
@@ -54,7 +54,7 @@ import org.xml.sax.ext.DefaultHandler2;
  * <p>
  * The simplest usage of this API may look like the following:
  * </p>
- * 
+ *
  * <pre>
  * EPUB epub = new EPUB();
  * OPSPublication oebps = new OPS2Publication();
@@ -66,7 +66,7 @@ import org.xml.sax.ext.DefaultHandler2;
  * This will create a new EPUB instance and an OPS (which is the typical content of an EPUB) with one chapter. The OPS
  * will have one chapter with contents from <b>chapter.xhtml</b> and the final result is an EPUB named <b>book.epub</b>.
  * </p>
- * 
+ *
  * @author Torkild U. Resheim
  * @see http://www.idpf.org/doc_library/epub/OPS_2.0.1_draft.htm
  */
@@ -108,7 +108,7 @@ public class EPUB {
 	private Container ocfContainer;
 
 	/**
-	 * Creates a new <b>empty</b> instance of an EPUB. Use {@link #add(OPSPublication)} and {@link #pack(File)} to add
+	 * Creates a new <b>empty</b> instance of an EPUB. Use {@link #add(Publication)} and {@link #pack(File)} to add
 	 * publications and ready the EPUB for distribution.
 	 */
 	public EPUB() {
@@ -125,19 +125,26 @@ public class EPUB {
 	}
 
 	/**
-	 * Adds a new publication (or root file) to the EPUB. Use {@link #add(OPSPublication)} when adding an OEBPS
+	 * Adds a new publication (or root file) to the EPUB. Use {@link #add(Publication)} when adding an OEBPS
 	 * publication.
-	 * 
+	 * <p>
+	 * Note that while an {@link EPUB} can technically contain multiple instances of an {@link Publication}, in
+	 * practice reading systems does not support this.
+	 * </p>
+	 *
 	 * @param file
 	 *            the publication to add
 	 * @param type
 	 *            the MIME type of the publication
-	 * @see #add(OPSPublication)
+	 * @see #add(Publication)
 	 */
 	public void add(File file, String type) {
 		String name = type.substring(type.lastIndexOf('/') + 1, type.length()).toUpperCase();
 		RootFiles rootFiles = ocfContainer.getRootfiles();
 		int count = rootFiles.getRootfiles().size();
+		if (count >= 1) {
+			log("Multiple root files is unsupported by most reading systems!", Severity.WARNING); //$NON-NLS-1$
+		}
 		String rootFileName = count > 0 ? name + "_" + count : name; //$NON-NLS-1$
 		rootFileName += File.separator + file.getName();
 		RootFile rootFile = OCFFactory.eINSTANCE.createRootFile();
@@ -151,13 +158,20 @@ public class EPUB {
 
 	/**
 	 * Adds a new OEBPS publication to the EPUB. Use {@link #add(File, String)} to add other types of content.
-	 * 
+	 * <p>
+	 * Note that while an {@link EPUB} can technically contain multiple instances of an {@link Publication}, in
+	 * practice reading systems does not support this.
+	 * </p>
+	 *
 	 * @param oebps
 	 *            the publication to add.
 	 */
-	public void add(OPSPublication oebps) {
+	public void add(Publication oebps) {
 		RootFiles rootFiles = ocfContainer.getRootfiles();
 		int count = rootFiles.getRootfiles().size();
+		if (count >= 1) {
+			log("Multiple root files is unsupported by most reading systems!", Severity.WARNING); //$NON-NLS-1$
+		}
 		String rootFileName = count > 0 ? "OEBPS_" + count : "OEBPS"; //$NON-NLS-1$ //$NON-NLS-2$
 		rootFileName += "/content.opf"; //$NON-NLS-1$
 		RootFile rootFile = OCFFactory.eINSTANCE.createRootFile();
@@ -171,7 +185,7 @@ public class EPUB {
 
 	/**
 	 * Utility method for deleting a folder recursively.
-	 * 
+	 *
 	 * @param folder
 	 *            the folder to delete
 	 */
@@ -187,7 +201,7 @@ public class EPUB {
 
 	/**
 	 * Returns the container instance of the EPUB.
-	 * 
+	 *
 	 * @return the container instance
 	 */
 	public Container getContainer() {
@@ -198,18 +212,18 @@ public class EPUB {
 	 * Returns a list of all <i>OPS publications</i> contained within the EPUB. Publications in unsupported versions
 	 * will not be returned. However their existence can still be determined by looking at the
 	 * {@link Container#getRootfiles()} result.
-	 * 
+	 *
 	 * @return a list of all OPS publications
 	 * @see {@link #getContainer()} for obtaining the root file container
 	 */
-	public List<OPSPublication> getOPSPublications() {
-		ArrayList<OPSPublication> publications = new ArrayList<OPSPublication>();
+	public List<Publication> getOPSPublications() {
+		ArrayList<Publication> publications = new ArrayList<Publication>();
 		EList<RootFile> rootFiles = ocfContainer.getRootfiles().getRootfiles();
 		for (RootFile rootFile : rootFiles) {
 			if (rootFile.getMediaType().equals(MIMETYPE_OEBPS)) {
 				// May be null if the publications is in an unsupported format.
 				if (rootFile.getPublication() != null) {
-					publications.add((OPSPublication) rootFile.getPublication());
+					publications.add((Publication) rootFile.getPublication());
 				}
 			}
 		}
@@ -220,7 +234,7 @@ public class EPUB {
 	 * Use to check whether or not the specified file is in a supported format and can be opened as an EPUB. If it's not
 	 * an EPUB <code>false</code> will be returned. Note that this methods does not test the contents of the EPUB which
 	 * may or may not contain unsupported root files.
-	 * 
+	 *
 	 * @param epubFile
 	 *            the target EPUB file
 	 * @return <code>true</code> if the file can be opened
@@ -240,7 +254,7 @@ public class EPUB {
 	 * Used to verify that the given {@link InputStream} contents is an EPUB. As per specification the first entry in
 	 * the file must be named "mimetype" and contain the string <i>application/epub+zip</i>. Further verification is not
 	 * done at this stage.
-	 * 
+	 *
 	 * @param inputStream
 	 *            the EPUB input stream
 	 * @return <code>true</code> if the file is an EPUB file
@@ -273,7 +287,7 @@ public class EPUB {
 
 	/**
 	 * Tests whether or not the OEBPS is in a version that is supported by this tooling.
-	 * 
+	 *
 	 * @param rootFile
 	 *            the root file
 	 * @return <code>true</code> if the OEBPS can be read
@@ -311,7 +325,7 @@ public class EPUB {
 	/**
 	 * Assembles the EPUB file using a temporary working folder. The folder will be deleted as soon as the assembly has
 	 * completed.
-	 * 
+	 *
 	 * @param epubFile
 	 *            the target EPUB file
 	 * @throws Exception
@@ -329,7 +343,7 @@ public class EPUB {
 	 * Assembles the EPUB file using the specified working folder. The contents of the working folder will <b>not</b> be
 	 * removed when the operation has completed. If the temporary data is not interesting, use {@link #pack(File)}
 	 * instead.
-	 * 
+	 *
 	 * @param epubFile
 	 *            the target EPUB file
 	 * @param rootFolder
@@ -349,8 +363,8 @@ public class EPUB {
 			for (RootFile rootFile : publications) {
 				Object publication = rootFile.getPublication();
 				File root = new File(rootFolder.getAbsolutePath() + File.separator + rootFile.getFullPath());
-				if (publication instanceof OPSPublication) {
-					((OPSPublication) publication).pack(root);
+				if (publication instanceof Publication) {
+					((Publication) publication).pack(root);
 				} else {
 					if (rootFile.getPublication() instanceof File) {
 						EPUBFileUtil.copy((File) rootFile.getPublication(), root);
@@ -370,7 +384,7 @@ public class EPUB {
 	/**
 	 * Reads the <i>Open Container Format (OCF)</i> formatted list of contents of this EPUB. The result of this
 	 * operation is placed in the {@link #ocfContainer} instance.
-	 * 
+	 *
 	 * @param rootFolder
 	 *            the folder where the EPUB was unpacked
 	 * @throws IOException
@@ -405,35 +419,35 @@ public class EPUB {
 		Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap().put(OCF_FILE_SUFFIX,
 				new XMLResourceFactoryImpl() {
 
-					@Override
-					public Resource createResource(URI uri) {
-						OCFResourceImpl xmiResource = new OCFResourceImpl(uri);
-						Map<Object, Object> loadOptions = xmiResource.getDefaultLoadOptions();
-						Map<Object, Object> saveOptions = xmiResource.getDefaultSaveOptions();
-						// We use extended metadata
-						saveOptions.put(XMLResource.OPTION_EXTENDED_META_DATA, Boolean.TRUE);
-						loadOptions.put(XMLResource.OPTION_EXTENDED_META_DATA, Boolean.TRUE);
-						// Required in order to correctly read in attributes
-						loadOptions.put(XMLResource.OPTION_LAX_FEATURE_PROCESSING, Boolean.TRUE);
-						// Treat "href" attributes as features
-						loadOptions.put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
-						// UTF-8 encoding is required per specification
-						saveOptions.put(XMLResource.OPTION_ENCODING, OCF_FILE_ENCODING);
-						// Do not download any external DTDs.
-						Map<String, Object> parserFeatures = new HashMap<String, Object>();
-						parserFeatures.put("http://xml.org/sax/features/validation", Boolean.FALSE); //$NON-NLS-1$
-						parserFeatures.put("http://apache.org/xml/features/nonvalidating/load-external-dtd", //$NON-NLS-1$
-								Boolean.FALSE);
-						loadOptions.put(XMLResource.OPTION_PARSER_FEATURES, parserFeatures);
-						return xmiResource;
-					}
+			@Override
+			public Resource createResource(URI uri) {
+				OCFResourceImpl xmiResource = new OCFResourceImpl(uri);
+				Map<Object, Object> loadOptions = xmiResource.getDefaultLoadOptions();
+				Map<Object, Object> saveOptions = xmiResource.getDefaultSaveOptions();
+				// We use extended metadata
+				saveOptions.put(XMLResource.OPTION_EXTENDED_META_DATA, Boolean.TRUE);
+				loadOptions.put(XMLResource.OPTION_EXTENDED_META_DATA, Boolean.TRUE);
+				// Required in order to correctly read in attributes
+				loadOptions.put(XMLResource.OPTION_LAX_FEATURE_PROCESSING, Boolean.TRUE);
+				// Treat "href" attributes as features
+				loadOptions.put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
+				// UTF-8 encoding is required per specification
+				saveOptions.put(XMLResource.OPTION_ENCODING, OCF_FILE_ENCODING);
+				// Do not download any external DTDs.
+				Map<String, Object> parserFeatures = new HashMap<String, Object>();
+				parserFeatures.put("http://xml.org/sax/features/validation", Boolean.FALSE); //$NON-NLS-1$
+				parserFeatures.put("http://apache.org/xml/features/nonvalidating/load-external-dtd", //$NON-NLS-1$
+						Boolean.FALSE);
+				loadOptions.put(XMLResource.OPTION_PARSER_FEATURES, parserFeatures);
+				return xmiResource;
+			}
 
-				});
+		});
 	}
 
 	/**
 	 * Unpacks the EPUB file to a temporary location and populates the data model with the content.
-	 * 
+	 *
 	 * @param epubFile
 	 *            the EPUB file to unpack
 	 * @return the location when the EPUB is unpacked
@@ -460,10 +474,10 @@ public class EPUB {
 	 * </p>
 	 * <p>
 	 * Multiple OPS root files in the publication will populate the OCF container instance with one
-	 * {@link OPSPublication} for each as expected. The contents of the data model starting with the OCF container will
+	 * {@link Publication} for each as expected. The contents of the data model starting with the OCF container will
 	 * be replaced. If the publication is in an unsupported version it will not be added to the data model.
 	 * </p>
-	 * 
+	 *
 	 * @param epubFile
 	 *            the EPUB file to unpack
 	 * @param rootFolder
@@ -486,7 +500,7 @@ public class EPUB {
 			if (rootFile.getMediaType().equals(MIMETYPE_OEBPS)) {
 				File root = new File(rootFolder.getAbsolutePath() + File.separator + rootFile.getFullPath());
 				if (isSupportedOEBPS(root)) {
-					OPSPublication ops = OPSPublication.getVersion2Instance();
+					Publication ops = Publication.getVersion2Instance();
 					ops.unpack(root);
 					rootFile.setPublication(ops);
 				} else {
@@ -500,7 +514,7 @@ public class EPUB {
 	/**
 	 * Creates a new folder named META-INF and writes the required (as per the OPS specification) <b>container.xml</b>
 	 * in that folder. This is part of the packing procedure.
-	 * 
+	 *
 	 * @param rootFolder
 	 *            the root folder
 	 * @see <a href="http://idpf.org/epub/30/spec/epub30-ocf.html">EPUB3 OCF specification</a>
