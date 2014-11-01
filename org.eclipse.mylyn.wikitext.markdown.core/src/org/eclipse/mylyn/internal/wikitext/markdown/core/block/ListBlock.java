@@ -32,6 +32,7 @@ public class ListBlock extends NestableBlock {
 	private int blockLineCount = 0;
 	private int wsLevel = -1;
 	private int contentLevel = -1;
+	private boolean wasEmpty = false;
 	private ListBlock nestedBlock = null;
 
 
@@ -47,6 +48,7 @@ public class ListBlock extends NestableBlock {
 		cloned.wsLevel = -1;
 		cloned.blockLineCount = 0;
 		cloned.nestedBlock = null;
+		cloned.wasEmpty = false;
 		return cloned;
 	}
 
@@ -71,6 +73,15 @@ public class ListBlock extends NestableBlock {
 			nestedBlock = null;
 		}
 		return ret;
+	}
+
+	private void maybeLineBreakParagraph() {
+		if (!wasEmpty) {
+			return;
+		}
+		builder.beginBlock(BlockType.PARAGRAPH, new Attributes());
+		builder.endBlock();
+		wasEmpty = false;
 	}
 
 	@Override
@@ -113,6 +124,7 @@ public class ListBlock extends NestableBlock {
 				builder.endBlock();
 			}
 
+			wasEmpty = false; // Ignore dummy line breaks
 			builder.beginBlock(BlockType.LIST_ITEM, new Attributes());
 			// extract content
 			offset += itemStartMatcher.start(4);
@@ -126,10 +138,9 @@ public class ListBlock extends NestableBlock {
 			}
 
 			if (text.trim().isEmpty()) {
-				// We ignore empty lines here, unless there's something else!
-				builder.beginBlock(BlockType.PARAGRAPH, new Attributes());
-				builder.endBlock();
 				builder.characters("\n");
+				wasEmpty = true;
+				// We ignore empty lines here, unless there's something else!
 				return offset + text.length();
 
 			} else {
@@ -141,6 +152,8 @@ public class ListBlock extends NestableBlock {
 			}
 		}
 
+		// Maybe it's time to insert a line break here?
+		maybeLineBreakParagraph();
 		markupLanguage.emitMarkupLine(getParser(), state, line, offset);
 		blockLineCount++;
 		return -1;
