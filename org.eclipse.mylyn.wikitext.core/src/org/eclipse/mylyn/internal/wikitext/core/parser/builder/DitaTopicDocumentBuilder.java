@@ -220,8 +220,6 @@ public class DitaTopicDocumentBuilder extends AbstractXmlDocumentBuilder {
 			break;
 		case LIST_ITEM:
 			elementName = "li"; //$NON-NLS-1$
-			elementNames = new String[] { "p" }; //$NON-NLS-1$
-			closeElementsOnBlockStart = true;
 			break;
 		case TABLE:
 			elementName = "simpletable"; //$NON-NLS-1$
