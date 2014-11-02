@@ -27,14 +27,18 @@ import org.eclipse.mylyn.wikitext.core.parser.markup.Block;
 public class ListBlock extends NestableBlock {
 
 	private static final Pattern itemStartPattern = Pattern.compile("( *)(?:([\\*\\+\\-])|([0-9]+\\.))\\s+(.+?)"); //$NON-NLS-1$
-	private static final Pattern leadingSpaces = Pattern.compile("^( *)");
+
+	private static final Pattern leadingSpaces = Pattern.compile("^( *)"); //$NON-NLS-1$
 
 	private int blockLineCount = 0;
-	private int wsLevel = -1;
-	private int contentLevel = -1;
-	private boolean wasEmpty = false;
-	private ListBlock nestedBlock = null;
 
+	private int wsLevel = -1;
+
+	private int contentLevel = -1;
+
+	private boolean wasEmpty = false;
+
+	private Block nestedBlock = null;
 
 	@Override
 	public boolean canStart(String line, int lineOffset) {
@@ -44,7 +48,7 @@ public class ListBlock extends NestableBlock {
 
 	@Override
 	public NestableBlock clone() {
-		ListBlock cloned = (ListBlock)super.clone();
+		ListBlock cloned = (ListBlock) super.clone();
 		cloned.wsLevel = -1;
 		cloned.blockLineCount = 0;
 		cloned.nestedBlock = null;
@@ -54,8 +58,10 @@ public class ListBlock extends NestableBlock {
 
 	private static class ChildStatus {
 		boolean closed = false;
+
 		int offset;
-		ChildStatus(Block block, int newOffset)  {
+
+		ChildStatus(Block block, int newOffset) {
 			if (block.isClosed()) {
 				closed = true;
 				offset = -1;
@@ -84,6 +90,22 @@ public class ListBlock extends NestableBlock {
 		wasEmpty = false;
 	}
 
+	private Block clone(Block block) {
+		Block newBlock = block.clone();
+		newBlock.setState(getState());
+		newBlock.setParser(getParser());
+		return newBlock;
+	}
+
+	private void createNewBlock(String line, int offset) {
+		for (Block block : markupLanguage.getBlocks()) {
+			if (block.canStart(line, offset)) {
+				nestedBlock = clone(block);
+				break;
+			}
+		}
+	}
+
 	@Override
 	protected int processLineContent(String line, int offset) {
 
@@ -110,9 +132,7 @@ public class ListBlock extends NestableBlock {
 					}
 				} else {
 					if (curIndent > wsLevel) {
-						nestedBlock = (ListBlock)clone();
-						nestedBlock.setState(getState());
-						nestedBlock.setParser(getParser());
+						createNewBlock(line, offset);
 						return processLineContent(line, offset);
 
 					} else if (curIndent < wsLevel) {
@@ -129,7 +149,7 @@ public class ListBlock extends NestableBlock {
 			// extract content
 			offset += itemStartMatcher.start(4);
 
-		} else  {
+		} else {
 			if (nestedBlock != null) {
 				ChildStatus cs = dispatchToChild(line, offset);
 				if (!cs.closed) {
@@ -138,16 +158,23 @@ public class ListBlock extends NestableBlock {
 			}
 
 			if (text.trim().isEmpty()) {
-				builder.characters("\n");
 				wasEmpty = true;
 				// We ignore empty lines here, unless there's something else!
 				return offset + text.length();
 
 			} else {
 				Matcher m = leadingSpaces.matcher(text);
-				if (!m.find() || m.group(1).length() < contentLevel) {
+				int newLevel = m.find() ? m.group(1).length() : 0;
+				if (newLevel < contentLevel) {
 					setClosed(true);
 					return offset;
+				} else {
+					if (newLevel > contentLevel) {
+						createNewBlock(line, offset);
+						if (nestedBlock != null) {
+							return nestedBlock.processLine(line, offset);
+						}
+					}
 				}
 			}
 		}
