@@ -209,8 +209,7 @@ public class DitaTopicDocumentBuilder extends AbstractXmlDocumentBuilder {
 			elementName = "p"; //$NON-NLS-1$
 			break;
 		case CODE:
-			elementName = "pre"; //$NON-NLS-1$
-			elementNames = new String[] { "codeph" }; //$NON-NLS-1$
+			elementName = "codeblock"; //$NON-NLS-1$
 			break;
 		case PREFORMATTED:
 			elementName = "pre"; //$NON-NLS-1$
